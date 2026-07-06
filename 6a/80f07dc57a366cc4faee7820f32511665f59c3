@@ -1,0 +1,28 @@
+index.html
+  s_5b2cdd9247b3b9::t_2364c0a2822441 1303
+  s_5b2cdd9247b3b9::t_a9970a5b00ce3f 589
+  s_5b2cdd9247b3b9::t_130570e190cade 1266-1267
+  s_5b2cdd9247b3b9::t_d980fe78a82cc7 595-601
+  s_5b2cdd9247b3b9::t_fbeeb33b033718 303-314
+  s_5b2cdd9247b3b9::t_2e650a2e75519e 496-505,510-519
+  s_5b2cdd9247b3b9::t_4a63b667395e69 560-563
+  s_5b2cdd9247b3b9::t_61ebcd098c589b 788-791,793,797,802-840
+  s_5b2cdd9247b3b9::t_202ddbbb9ddb98 525-529
+  s_5b2cdd9247b3b9::t_f349116d3ba87c 841
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6a80f07dc57a366cc4faee7820f32511665f59c3",
+  "prompts": {},
+  "sessions": {
+    "s_5b2cdd9247b3b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0cd8240f-df27-484e-94f6-e348cd48e3fa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "minticequipo66-coder <minticequipo66-coder@users.noreply.github.com>"
+    }
+  }
+}
