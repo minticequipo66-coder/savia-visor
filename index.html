@@ -271,6 +271,35 @@
     .tree-spinner { padding: 5px 10px 5px 22px; font-size: 8px; color: var(--amber); letter-spacing: .08em; animation: blink 1.2s ease-in-out infinite; }
     .tree-empty   { padding: 8px 10px; font-size: 8px; color: var(--text3); letter-spacing: .06em; text-align: center; }
 
+    /* ── Damage zones ── */
+    .dmg-toggle {
+      display: flex; align-items: center; gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 0;
+    }
+    .dmg-track {
+      width: 26px; height: 13px; border-radius: 7px;
+      background: var(--border); position: relative;
+      transition: background .25s; flex-shrink: 0;
+    }
+    .dmg-track.on { background: var(--amber); box-shadow: 0 0 6px rgba(245,158,11,.35); }
+    .dmg-thumb {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: rgba(255,255,255,.65); position: absolute; top: 2px; left: 2px;
+      transition: transform .25s;
+    }
+    .dmg-track.on .dmg-thumb { transform: translateX(13px); background: white; }
+    .dmg-txt { font-size: 7.5px; letter-spacing: .1em; color: var(--text3); transition: color .2s; }
+    .dmg-track.on ~ .dmg-txt { color: var(--amber); }
+
+    .dmg-layer-btn {
+      font-family: 'DM Mono', monospace; font-size: 7.5px; letter-spacing: .08em;
+      padding: 2px 9px; border-radius: 3px; cursor: pointer; flex-shrink: 0;
+      background: var(--panel2); border: 1px solid var(--border2); color: var(--text3);
+      transition: all .2s;
+    }
+    .dmg-layer-btn.on  { background: var(--amber-dim); border-color: rgba(245,158,11,.4); color: var(--amber); }
+    .dmg-layer-btn.off { opacity: .35; }
+
     /* ── Loader ── */
     #loader {
       position: fixed; inset: 0; z-index: 99999;
@@ -413,7 +442,7 @@
 <main id="main-layout" style="flex:1; display:flex; overflow:hidden; min-height:0;">
 
   <!-- ─── LEFT PANEL ─── -->
-  <aside id="left-panel" style="flex-shrink:0; width:300px; display:flex; flex-direction:column; background:var(--panel); border-right:1px solid var(--border); overflow:hidden;">
+  <aside id="left-panel" style="flex-shrink:0; width:300px; display:flex; flex-direction:column; background:var(--panel); border-right:1px solid var(--border); overflow-y:auto; overflow-x:hidden;">
 
     <!-- KPI Grid -->
     <div id="kpi-grid" style="padding:10px; display:grid; grid-template-columns:1fr 1fr; gap:8px; flex-shrink:0;">
@@ -464,6 +493,32 @@
 
     <div style="margin:0 10px; height:1px; background:var(--border2); flex-shrink:0;"></div>
 
+    <!-- ─── DAMAGE ZONES ─── -->
+    <div style="flex-shrink:0; border-bottom:1px solid var(--border2);">
+      <div style="padding:6px 10px 5px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:.10em;color:var(--text3);font-weight:500;">Damage Zones</div>
+      </div>
+
+      <div style="padding:0 10px 6px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border2); padding-bottom:6px; margin-bottom:6px;">
+        <span style="font-size:8px;color:var(--text2);letter-spacing:.04em;">Cut boundaries</span>
+        <button class="dmg-toggle" onclick="toggleCutBoundaries()">
+          <div class="dmg-track" id="cut-track"><div class="dmg-thumb"></div></div>
+          <span class="dmg-txt" id="cut-txt">OFF</span>
+        </button>
+      </div>
+
+      <div style="padding:0 10px 8px; display:flex; flex-direction:column; gap:5px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <span style="font-size:8px;color:var(--text2);letter-spacing:.03em;flex:1;">Cascada Hidrológica</span>
+          <button class="dmg-layer-btn on" id="dmg-cascada-btn" onclick="toggleDamageLayer('cascada')">ON</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <span style="font-size:8px;color:var(--text2);letter-spacing:.03em;flex:1;">Daño Local</span>
+          <button class="dmg-layer-btn on" id="dmg-dano-btn" onclick="toggleDamageLayer('dano')">ON</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── INFRAESTRUCTURA HÍDRICA ─── -->
     <div style="flex-shrink:0; border-bottom:1px solid var(--border2);">
       <div id="infra-hdr" onclick="toggleInfraSection()">
@@ -513,12 +568,12 @@
     </div>
 
     <!-- Alert Feed -->
-    <div id="alert-feed-wrap" style="flex:1; overflow:hidden; display:flex; flex-direction:column; min-height:0;">
+    <div id="alert-feed-wrap" style="flex-shrink:0; display:flex; flex-direction:column; border-bottom:1px solid var(--border2);">
       <div style="padding:7px 10px 4px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between;">
         <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.14em; color:var(--text3);">Alertas Recientes</div>
         <div style="font-size:8px; padding:1px 6px; border-radius:3px; background:var(--red-dim); border:1px solid rgba(239,68,68,0.25); color:var(--red);" class="blink">LIVE</div>
       </div>
-      <div id="alert-feed" style="flex:1; overflow-y:auto; padding:0 10px 10px; display:flex; flex-direction:column; gap:4px;"></div>
+      <div id="alert-feed" style="height:150px; overflow-y:auto; padding:0 10px 10px; display:flex; flex-direction:column; gap:4px;"></div>
     </div>
 
     <div style="margin:0 10px; height:1px; background:var(--border2); flex-shrink:0;"></div>
@@ -595,6 +650,10 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
 }).addTo(map);
 
 map.attributionControl.setPrefix('GovCamp 2026 · <b>Savia Visor</b>');
+
+// Pane for damage zones — renders below AI mock layers
+map.createPane('damagePane');
+map.getPane('damagePane').style.zIndex = 350;
 
 map.on('mousemove', e => {
   const la = e.latlng.lat.toFixed(4), ln = Math.abs(e.latlng.lng).toFixed(4);
@@ -1105,10 +1164,160 @@ setTimeout(() => {
 }, 9000);
 
 // ═══════════════════════════════════════════════════════
+//  DAMAGE ZONES
+// ═══════════════════════════════════════════════════════
+const DAMAGE_PATHS = {
+  cascada_full:    'data/cascada_hidrologica_caqueta.geojson',
+  cascada_trimmed: 'data/cascada_hidrologica_caqueta_trimmed.geojson',
+  dano_full:       'data/dano_local_caqueta.geojson',
+  dano_trimmed:    'data/dano_local_caqueta_trimmed.geojson',
+};
+
+const CASCADA_STOPS    = ['#abebc6','#f4d03f','#e74c3c','#900c3f'];
+const DANO_LOCAL_STOPS = ['#abebc6','#f4d03f','#e74c3c'];
+
+const dmg = {
+  cutBoundaries: false,
+  visible: { cascada:true, dano:true },
+  layers:  { cascada_full:null, cascada_trimmed:null, dano_full:null, dano_trimmed:null },
+};
+
+function _hexToRgbDmg(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+}
+function _lerpColorDmg(a, b, t) {
+  const pa = _hexToRgbDmg(a), pb = _hexToRgbDmg(b);
+  return `rgb(${Math.round(pa.r+(pb.r-pa.r)*t)},${Math.round(pa.g+(pb.g-pa.g)*t)},${Math.round(pa.b+(pb.b-pa.b)*t)})`;
+}
+function _colorScale(stops, value, vmax) {
+  const t = Math.max(0, Math.min(1, (value||0) / (vmax||1)));
+  const n = stops.length - 1;
+  const s = t * n;
+  const i = Math.min(Math.floor(s), n - 1);
+  return _lerpColorDmg(stops[i], stops[i+1], s - i);
+}
+
+function _buildDmgLayer(geojson, stops, valueKey) {
+  const vmax = Math.max(...geojson.features.map(f => f.properties[valueKey] || 0));
+  return L.geoJSON(geojson, {
+    pane: 'damagePane',
+    style: f => ({
+      fillColor: _colorScale(stops, f.properties[valueKey], vmax),
+      color:       f.properties.anomalia_riesgo ? '#c0392b' : 'rgba(255,255,255,.25)',
+      weight:      f.properties.anomalia_riesgo ? 2.5 : 0.8,
+      fillOpacity: 0.70,
+    }),
+    onEachFeature(f, lyr) {
+      const p    = f.properties;
+      const haVal = Math.round(p[valueKey] || 0).toLocaleString('es-CO');
+      const score = (p.riesgo_cascada_score || 0).toFixed(1);
+      const isAnom = p.anomalia_riesgo;
+      const accentColor = isAnom ? '#ef4444' : '#f59e0b';
+      const label = valueKey.includes('acumulada') ? 'Cascada aguas arriba' : 'Daño local reciente';
+
+      lyr.bindPopup(`
+        <div class="pop-wrap">
+          <div class="pop-title" style="color:${accentColor};">
+            Cuenca ${p.HYBAS_ID}${isAnom ? ' ⚠' : ''}
+          </div>
+          <div class="pop-grid">
+            <div><div class="pop-label">${label}</div><div>${haVal} ha</div></div>
+            <div><div class="pop-label">Score riesgo</div><div style="color:${accentColor}">${score}/100</div></div>
+            <div><div class="pop-label">Infraest. expuesta</div><div>${p.n_infraestructura_agua}</div></div>
+            <div><div class="pop-label">Cuencas arriba</div><div>${p.n_cuencas_aguas_arriba}</div></div>
+          </div>
+          <div class="pop-foot">
+            Pendiente: ${(p.pendiente_clase||'').replace('pendiente_','')}
+            ${isAnom ? ' · ⚠ Alerta Isolation Forest' : ''}
+          </div>
+        </div>`);
+
+      lyr.on('mouseover', function(e) {
+        this.setStyle({ fillOpacity:.9, weight:2 });
+        this.bindTooltip(
+          `<span style="color:${accentColor};font-size:9px;">Cuenca ${p.HYBAS_ID}${isAnom?' ⚠':''}</span><br><span style="font-size:8px;">${haVal} ha · score ${score}</span>`,
+          { sticky:true, direction:'top' }
+        ).openTooltip(e.latlng);
+      });
+      lyr.on('mouseout', function() {
+        this.setStyle({ fillOpacity:.70, weight: isAnom ? 2.5 : 0.8 });
+        this.unbindTooltip?.();
+      });
+    },
+  });
+}
+
+function _activeDmgLayer(tipo) {
+  return tipo === 'cascada'
+    ? (dmg.cutBoundaries ? dmg.layers.cascada_trimmed : dmg.layers.cascada_full)
+    : (dmg.cutBoundaries ? dmg.layers.dano_trimmed    : dmg.layers.dano_full);
+}
+
+async function loadDamageData() {
+  try {
+    const [cascadaFull, cascadaTrimmed, danoFull, danoTrimmed] = await Promise.all([
+      fetch(DAMAGE_PATHS.cascada_full).then(r    => r.json()),
+      fetch(DAMAGE_PATHS.cascada_trimmed).then(r => r.json()),
+      fetch(DAMAGE_PATHS.dano_full).then(r       => r.json()),
+      fetch(DAMAGE_PATHS.dano_trimmed).then(r    => r.json()),
+    ]);
+
+    dmg.layers.cascada_full    = _buildDmgLayer(cascadaFull,    CASCADA_STOPS,    'def_acumulada_reciente_ha');
+    dmg.layers.cascada_trimmed = _buildDmgLayer(cascadaTrimmed, CASCADA_STOPS,    'def_acumulada_reciente_ha');
+    dmg.layers.dano_full       = _buildDmgLayer(danoFull,       DANO_LOCAL_STOPS, 'def_local_reciente_ha');
+    dmg.layers.dano_trimmed    = _buildDmgLayer(danoTrimmed,    DANO_LOCAL_STOPS, 'def_local_reciente_ha');
+
+    if (dmg.visible.cascada) dmg.layers.cascada_full.addTo(map);
+    if (dmg.visible.dano)    dmg.layers.dano_full.addTo(map);
+
+  } catch(e) {
+    console.warn('Error cargando damage zones:', e);
+  }
+}
+
+function toggleCutBoundaries() {
+  const prev_cascada = _activeDmgLayer('cascada');
+  const prev_dano    = _activeDmgLayer('dano');
+
+  dmg.cutBoundaries = !dmg.cutBoundaries;
+
+  const next_cascada = _activeDmgLayer('cascada');
+  const next_dano    = _activeDmgLayer('dano');
+
+  if (dmg.visible.cascada) {
+    if (prev_cascada) map.removeLayer(prev_cascada);
+    if (next_cascada) map.addLayer(next_cascada);
+  }
+  if (dmg.visible.dano) {
+    if (prev_dano) map.removeLayer(prev_dano);
+    if (next_dano) map.addLayer(next_dano);
+  }
+
+  const track = document.getElementById('cut-track');
+  const txt   = document.getElementById('cut-txt');
+  if (track) track.classList.toggle('on', dmg.cutBoundaries);
+  if (txt)   txt.textContent = dmg.cutBoundaries ? 'ON' : 'OFF';
+}
+
+function toggleDamageLayer(tipo) {
+  dmg.visible[tipo] = !dmg.visible[tipo];
+  const lyr = _activeDmgLayer(tipo);
+  if (lyr) dmg.visible[tipo] ? map.addLayer(lyr) : map.removeLayer(lyr);
+  const btn = document.getElementById(`dmg-${tipo}-btn`);
+  if (btn) {
+    btn.textContent = dmg.visible[tipo] ? 'ON' : 'OFF';
+    btn.classList.toggle('on',  dmg.visible[tipo]);
+    btn.classList.toggle('off', !dmg.visible[tipo]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════
 buildAlertFeed(ALERTS_DATA);
 loadData();
+loadDamageData();
 </script>
 </body>
 </html>
