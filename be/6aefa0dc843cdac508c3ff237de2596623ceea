@@ -1,0 +1,33 @@
+index.html
+  s_5b2cdd9247b3b9::t_81b547081d08e5 571,576
+  s_5b2cdd9247b3b9::t_52aaa09d8aedb7 654-657
+  s_5b2cdd9247b3b9::t_3617f85611beac 496-521
+  s_5b2cdd9247b3b9::t_a754f968ae8ba7 445
+  s_5b2cdd9247b3b9::t_56ddb754ee12d9 274-302
+  s_5b2cdd9247b3b9::t_d56951e64b44d9 1320
+  s_5b2cdd9247b3b9::t_b71f916154d4f8 1166-1314
+data/cascada_hidrologica_caqueta.geojson
+  s_5b2cdd9247b3b9::t_c81de46760dece 1
+data/cascada_hidrologica_caqueta_trimmed.geojson
+  s_5b2cdd9247b3b9::t_68b2bbdf9847ed 1-51
+data/dano_local_caqueta.geojson
+  s_5b2cdd9247b3b9::t_1a4ea403c9e8cc 1
+data/dano_local_caqueta_trimmed.geojson
+  s_5b2cdd9247b3b9::t_b82334ec9a06d2 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "be6aefa0dc843cdac508c3ff237de2596623ceea",
+  "prompts": {},
+  "sessions": {
+    "s_5b2cdd9247b3b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0cd8240f-df27-484e-94f6-e348cd48e3fa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "minticequipo66-coder <minticequipo66-coder@users.noreply.github.com>"
+    }
+  }
+}
