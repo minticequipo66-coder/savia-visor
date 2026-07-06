@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GovCamp 2026 · Monitor Ambiental IA</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:ital,wght@0,300;0,400;0,500&display=swap" rel="stylesheet" />
+
+  <script>
+    window.tailwind = window.tailwind || {};
+    tailwind = { config: { theme: { extend: { fontFamily: { display: ['"Bricolage Grotesque"','sans-serif'], mono: ['"DM Mono"','monospace'] } } } } };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --bg:        #020b04;
+      --panel:     #041508;
+      --panel2:    #061b0a;
+      --border:    #1a3a1e;
+      --border2:   #0d2210;
+      --neon:      #4ade80;
+      --neon-dim:  rgba(74,222,128,0.12);
+      --aqua:      #22d3ee;
+      --aqua-dim:  rgba(34,211,238,0.12);
+      --amber:     #f59e0b;
+      --amber-dim: rgba(245,158,11,0.12);
+      --red:       #ef4444;
+      --red-dim:   rgba(239,68,68,0.12);
+      --text:      #d1fae5;
+      --text2:     rgba(209,250,233,0.55);
+      --text3:     rgba(209,250,233,0.3);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%; background: var(--bg); color: var(--text);
+      font-family: 'DM Mono', monospace; overflow: hidden;
+      font-optical-sizing: auto; -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+      pointer-events: none; z-index: 9999;
+    }
+
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── KPI card ── */
+    .kpi-card {
+      background: var(--panel2); border: 1px solid var(--border2);
+      border-radius: 6px; padding: 10px 12px;
+      position: relative; overflow: hidden;
+      transition: border-color 0.25s, box-shadow 0.25s;
+    }
+    .kpi-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--neon), transparent);
+      opacity: 0.4;
+    }
+    .kpi-card:hover { border-color: var(--border); box-shadow: 0 0 16px rgba(74,222,128,0.06); }
+
+    /* ── Pulse dot ── */
+    @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2.8); opacity: 0; } }
+    .pulse-dot { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+    .pulse-dot::before {
+      content: ''; position: absolute;
+      width: 8px; height: 8px; border-radius: 50%; background: var(--neon);
+      animation: pulse-ring 1.6s ease-out infinite;
+    }
+    .pulse-inner { width: 6px; height: 6px; border-radius: 50%; background: var(--neon); position: relative; z-index: 1; }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .blink { animation: blink 1.2s ease-in-out infinite; }
+
+    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { animation: fade-up 0.55s ease-out both; }
+
+    @keyframes slide-in { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+    .slide-in { animation: slide-in 0.35s ease-out both; }
+
+    @keyframes sweep {
+      0%   { top: -2px; opacity: 0.7; }
+      85%  { opacity: 0.4; }
+      100% { top: 100%; opacity: 0; }
+    }
+    #radar-line {
+      position: absolute; left: 0; right: 0; top: -2px; height: 2px;
+      background: linear-gradient(90deg, transparent 0%, var(--neon) 50%, transparent 100%);
+      z-index: 600; pointer-events: none;
+      animation: sweep 7s linear infinite;
+    }
+
+    /* ── Layer buttons (AI toggle) ── */
+    .layer-btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 8px; letter-spacing: 0.12em; font-weight: 500;
+      padding: 4px 10px; border-radius: 4px; cursor: pointer;
+      background: var(--panel2); border: 1px solid var(--border2); color: var(--text3);
+      transition: all 0.2s;
+    }
+    .layer-btn:hover         { color: var(--text2); border-color: var(--border); }
+    .layer-btn.on-all        { background: var(--neon-dim); border-color: var(--neon); color: var(--neon); }
+    .layer-btn.on-def        { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+    .layer-btn.on-water      { background: var(--aqua-dim); border-color: var(--aqua); color: var(--aqua); }
+
+    /* ── Alert item ── */
+    .alert-item {
+      padding: 6px 8px; border-radius: 4px; cursor: default;
+      border: 1px solid var(--border2); background: rgba(6,27,10,0.5);
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .alert-item:hover { border-color: var(--border); }
+
+    /* ── Leaflet overrides ── */
+    .leaflet-container { background: #010701 !important; font-family: 'DM Mono', monospace !important; }
+    .leaflet-popup-content-wrapper {
+      background: #061b0a !important; border: 1px solid var(--border) !important;
+      border-radius: 6px !important; color: var(--text) !important;
+      font-family: 'DM Mono', monospace !important;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.7) !important; padding: 0 !important;
+    }
+    .leaflet-popup-content { margin: 0 !important; }
+    .leaflet-popup-tip { background: #061b0a !important; }
+    .leaflet-popup-close-button { color: var(--text3) !important; padding: 6px 8px !important; font-size: 16px !important; }
+    .leaflet-popup-close-button:hover { color: var(--text) !important; }
+    .leaflet-control-zoom a {
+      background: #041508 !important; border-color: var(--border) !important;
+      color: var(--text2) !important; font-size: 14px !important;
+    }
+    .leaflet-control-zoom a:hover { background: var(--panel2) !important; color: var(--neon) !important; }
+    .leaflet-control-attribution {
+      background: rgba(4,21,8,0.92) !important; border: 1px solid var(--border) !important;
+      border-radius: 4px !important; color: rgba(209,250,233,0.55) !important;
+      font-size: 9px !important; font-family: 'DM Mono', monospace !important;
+      letter-spacing: 0.04em !important; padding: 3px 8px !important;
+      backdrop-filter: blur(8px) !important;
+    }
+    .leaflet-tooltip {
+      background: rgba(6,14,6,.95) !important; border: 1px solid var(--border) !important;
+      color: var(--text) !important; font-family: 'DM Mono', monospace !important;
+      font-size: 9px !important; border-radius: 3px !important;
+      padding: 4px 8px !important; box-shadow: 0 0 8px rgba(34,211,238,0.15) !important;
+    }
+    .leaflet-tooltip::before { display: none !important; }
+
+    /* ── Popup inner ── */
+    .pop-wrap { padding: 12px 14px; min-width: 200px; }
+    .pop-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 14px; margin-bottom: 10px; letter-spacing: -0.01em; font-optical-sizing: auto; }
+    .pop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 10px; color: var(--text2); margin-bottom: 8px; }
+    .pop-label { font-family: 'DM Mono', monospace; font-size: 7.5px; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; margin-bottom: 3px; font-weight: 500; }
+    .pop-foot { font-family: 'DM Mono', monospace; font-size: 7.5px; color: var(--text3); padding-top: 8px; border-top: 1px solid var(--border2); letter-spacing: 0.04em; }
+    .ica-bar-wrap { height: 3px; border-radius: 2px; background: var(--border2); overflow: hidden; margin-top: 3px; }
+    .ica-bar-fill { height: 100%; border-radius: 2px; }
+
+    /* ── Map badges ── */
+    #map-badges {
+      position: absolute; top: 10px; right: 10px; z-index: 700;
+      display: flex; flex-direction: column; gap: 4px; pointer-events: none;
+    }
+    #coord-badge {
+      font-size: 8px; padding: 4px 9px; border-radius: 4px;
+      background: rgba(4,21,8,0.9); border: 1px solid var(--border2);
+      color: var(--text3); backdrop-filter: blur(8px);
+      font-family: 'DM Mono', monospace; letter-spacing: 0.08em;
+    }
+    #scan-badge {
+      font-size: 8px; padding: 4px 9px; border-radius: 4px;
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(4,21,8,0.9); border: 1px solid var(--border2);
+      color: var(--text2); backdrop-filter: blur(8px);
+      font-family: 'DM Mono', monospace; letter-spacing: 0.08em;
+    }
+
+    /* ── Panel / map separator ── */
+    #left-panel { border-right: none !important; }
+    #map-wrap::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1px;
+      background: linear-gradient(to bottom, transparent 0%, var(--border) 12%, rgba(74,222,128,0.55) 50%, var(--border) 88%, transparent 100%);
+      box-shadow: 0 0 14px rgba(74,222,128,0.22), 0 0 5px rgba(74,222,128,0.38);
+      z-index: 10; pointer-events: none;
+    }
+
+    /* ── Infra section ── */
+    #infra-hdr {
+      padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; user-select: none; transition: background .15s;
+    }
+    #infra-hdr:hover { background: rgba(34,211,238,.03); }
+    #infra-chevron { font-size: 8px; color: var(--text3); transition: transform .2s; display: inline-block; }
+    #infra-chevron.open { transform: rotate(180deg); }
+
+    .infra-stat-badge {
+      font-size: 7px; padding: 1px 5px; border-radius: 2px;
+      background: rgba(34,211,238,.08); border: 1px solid rgba(34,211,238,.2);
+      color: rgba(34,211,238,.65); letter-spacing: .06em;
+    }
+    .infra-stat-badge.pending {
+      background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.2);
+      color: var(--amber); animation: blink 1.4s ease-in-out infinite;
+    }
+
+    .infra-type-btn {
+      font-family: 'DM Mono', monospace; font-size: 7.5px; letter-spacing: .08em;
+      padding: 3px 9px; border-radius: 3px; cursor: pointer;
+      background: var(--panel2); border: 1px solid var(--border2); color: var(--text3);
+      transition: all .2s;
+    }
+    .infra-type-btn.on {
+      background: rgba(34,211,238,.1); border-color: rgba(34,211,238,.4); color: var(--aqua);
+    }
+    .infra-type-btn.off { opacity: .35; }
+
+    #infra-search {
+      width: 100%; background: var(--panel2); border: 1px solid var(--border2);
+      color: var(--text); padding: 4px 8px; font-family: 'DM Mono', monospace;
+      font-size: 8px; letter-spacing: .06em; border-radius: 3px; outline: none;
+      transition: border-color .2s;
+    }
+    #infra-search:focus { border-color: rgba(34,211,238,.4); }
+    #infra-search::placeholder { color: var(--text3); }
+
+    /* ── Treeview ── */
+    #infra-tree { overflow-y: auto; max-height: 190px; }
+
+    .tree-group-hdr {
+      display: flex; align-items: center; gap: 5px; padding: 3px 10px;
+      cursor: pointer; user-select: none; transition: background .12s;
+    }
+    .tree-group-hdr:hover { background: rgba(34,211,238,.04); }
+    .tree-g-arrow { font-size: 7px; color: var(--text3); transition: transform .15s; width: 8px; flex-shrink: 0; }
+    .tree-g-arrow.open { transform: rotate(90deg); }
+    .tree-g-icon { font-size: 10px; flex-shrink: 0; }
+    .tree-g-label { font-size: 7.5px; letter-spacing: .06em; flex: 1; }
+    .tree-g-count { font-size: 7px; color: var(--text3); }
+    .tree-g-eye {
+      background: none; border: none; color: var(--text3); cursor: pointer;
+      font-size: 10px; padding: 0 2px; transition: color .15s; flex-shrink: 0;
+    }
+    .tree-g-eye:hover { color: var(--aqua); }
+
+    .tree-feat-list { overflow-y: auto; max-height: 130px; }
+
+    .tree-feat-item {
+      display: flex; align-items: center; gap: 4px;
+      padding: 2px 10px 2px 22px; cursor: pointer;
+      border-left: 2px solid transparent; transition: all .1s;
+    }
+    .tree-feat-item:hover { background: rgba(34,211,238,.04); border-left-color: rgba(34,211,238,.35); }
+    .tree-feat-item.sel { background: rgba(34,211,238,.07); border-left-color: var(--aqua); }
+    .tree-feat-item.sel .tree-feat-name { color: var(--text); }
+    .tree-feat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .tree-feat-dot.poly { border-radius: 1px; }
+    .tree-feat-dot.line { border-radius: 0; height: 2px; margin: 2px 0; width: 10px; }
+    .tree-feat-name { font-size: 7.5px; color: var(--text2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tree-feat-zoom {
+      background: none; border: none; color: var(--text3); cursor: pointer;
+      font-size: 9px; padding: 0 2px; opacity: 0; transition: opacity .15s, color .15s;
+    }
+    .tree-feat-item:hover .tree-feat-zoom { opacity: 1; }
+    .tree-feat-zoom:hover { color: var(--aqua); }
+
+    .tree-spinner { padding: 5px 10px 5px 22px; font-size: 8px; color: var(--amber); letter-spacing: .08em; animation: blink 1.2s ease-in-out infinite; }
+    .tree-empty   { padding: 8px 10px; font-size: 8px; color: var(--text3); letter-spacing: .06em; text-align: center; }
+
+    /* ── Loader ── */
+    #loader {
+      position: fixed; inset: 0; z-index: 99999;
+      background: var(--bg); display: flex; align-items: center; justify-content: center;
+    }
+    #loader::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 60% 50% at 50% 38%, rgba(74,222,128,0.07) 0%, transparent 100%);
+      pointer-events: none;
+    }
+    #loader::after {
+      content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+      pointer-events: none;
+    }
+    #loader-center { display: flex; flex-direction: column; align-items: center; width: 400px; position: relative; z-index: 1; }
+
+    @keyframes hex-spin  { to { transform: rotate(360deg); } }
+    @keyframes hex-pulse { 0%,100%{opacity:0.35} 50%{opacity:0.9} }
+    @keyframes dot-glow  { 0%,100%{filter:drop-shadow(0 0 4px #4ade80)} 50%{filter:drop-shadow(0 0 10px #4ade80)} }
+
+    #loader-logo { margin-bottom: 26px; position: relative; width: 72px; height: 72px; }
+    #loader-logo .l-spin  { animation: hex-spin  10s linear infinite; transform-origin: 36px 36px; }
+    #loader-logo .l-pulse { animation: hex-pulse 2.2s ease-in-out infinite; }
+    #loader-logo .l-dot   { animation: dot-glow  1.8s ease-in-out infinite; }
+
+    #loader-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 30px; color: var(--neon); letter-spacing: 0.04em; font-optical-sizing: auto; line-height: 1; margin-bottom: 8px; }
+    #loader-sub   { font-family: 'DM Mono', monospace; font-size: 8.5px; color: var(--text3); letter-spacing: 0.22em; margin-bottom: 30px; }
+    #loader-sep   { width: 100%; height: 1px; margin-bottom: 22px; background: linear-gradient(90deg, transparent, var(--border), transparent); }
+    #loader-log   { width: 100%; min-height: 140px; margin-bottom: 22px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+
+    .log-line { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 0.04em; display: flex; align-items: center; gap: 8px; animation: slide-in 0.3s ease-out both; }
+    .log-line .l-ok  { color: var(--neon); }
+    .log-line .l-dim { color: var(--border); }
+
+    #loader-bar-wrap { width: 100%; height: 2px; border-radius: 1px; background: var(--border2); overflow: hidden; margin-bottom: 7px; }
+    #loader-bar { height: 100%; width: 0%; border-radius: 1px; background: linear-gradient(90deg, var(--neon) 0%, #86efac 100%); box-shadow: 0 0 10px rgba(74,222,128,0.6); transition: width 0.12s ease-out; }
+    #loader-pct { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--text3); letter-spacing: 0.12em; }
+
+    .creator-tag { font-family: 'Bricolage Grotesque', sans-serif; font-size: 10px; font-weight: 600; font-optical-sizing: auto; color: rgba(74,222,128,0.55); letter-spacing: 0.02em; transition: color 0.3s; }
+    .creator-tag:hover { color: var(--neon); }
+
+    @keyframes loader-out { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-16px) scale(1.01); } }
+    #loader.exiting { animation: loader-out 0.55s cubic-bezier(0.4, 0, 1, 1) forwards; pointer-events: none; }
+
+    /* ── Mobile ── */
+    @media (max-width: 767px) {
+      header { height: 44px !important; padding: 0 12px !important; }
+      #header-badges, #header-subtitle { display: none !important; }
+      #header-title { font-size: 13px !important; }
+      #clock { font-size: 13px !important; }
+      #main-layout { flex-direction: column !important; }
+      #map-wrap { flex: none !important; height: 52vh !important; width: 100% !important; min-width: 0 !important; order: 1; }
+      #left-panel { width: 100% !important; order: 2; border-right: none !important; overflow-y: auto !important; max-height: 48vh !important; flex: none !important; }
+      #map-wrap::before { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 1px; background: linear-gradient(to right, transparent 0%, var(--border) 10%, rgba(74,222,128,0.55) 50%, var(--border) 90%, transparent 100%); }
+      #kpi-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 6px !important; }
+      #kv-alertas, #kv-has, #kv-estac, #kv-det { font-size: 20px !important; }
+      #alert-feed-wrap { flex: none !important; overflow: visible !important; }
+      #alert-feed { overflow-y: visible !important; height: auto !important; max-height: none !important; }
+      #loader-center { width: min(380px, 90vw); padding: 0 20px; }
+      #loader-title { font-size: 22px !important; }
+    }
+  </style>
+</head>
+<body style="display:flex; flex-direction:column; height:100vh; overflow:hidden;">
+
+<!-- ═══════ LOADER ═══════ -->
+<div id="loader">
+  <div id="loader-center">
+    <div id="loader-logo">
+      <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+        <g class="l-spin">
+          <polygon points="36,3 66,19.5 66,52.5 36,69 6,52.5 6,19.5" stroke="rgba(74,222,128,0.25)" stroke-width="1" fill="none" stroke-dasharray="5,4"/>
+        </g>
+        <g class="l-pulse">
+          <polygon points="36,8 62,22.5 62,49.5 36,64 10,49.5 10,22.5" stroke="rgba(74,222,128,0.18)" stroke-width="1" fill="none"/>
+        </g>
+        <polygon points="36,13 59,25.5 59,46.5 36,59 13,46.5 13,25.5" stroke="#4ade80" stroke-width="1.5" fill="rgba(74,222,128,0.06)"/>
+        <polygon points="36,21 51,29.5 51,42.5 36,51 21,42.5 21,29.5" stroke="rgba(74,222,128,0.25)" stroke-width="0.8" fill="none"/>
+        <g class="l-dot">
+          <circle cx="36" cy="36" r="4.5" fill="#4ade80"/>
+          <circle cx="36" cy="36" r="9" fill="none" stroke="#4ade80" stroke-width="0.7" opacity="0.5"/>
+        </g>
+        <line x1="36" y1="13" x2="36" y2="21" stroke="#4ade80" stroke-width="1" opacity="0.4"/>
+        <line x1="36" y1="51" x2="36" y2="59" stroke="#4ade80" stroke-width="1" opacity="0.4"/>
+      </svg>
+    </div>
+    <div id="loader-title">GOVCAMP 2026</div>
+    <div id="loader-sub">MONITOR AMBIENTAL IA · CAQUETÁ</div>
+    <div id="loader-sep"></div>
+    <div id="loader-log"></div>
+    <div id="loader-bar-wrap"><div id="loader-bar"></div></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-top:7px;">
+      <div id="loader-pct">0%</div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-family:'DM Mono',monospace; font-size:7.5px; color:var(--text3); letter-spacing:0.1em;">EQUIPO</span>
+        <span style="width:1px; height:10px; background:var(--border2); display:inline-block;"></span>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="creator-tag">Brian</span>
+          <span class="creator-tag">Carolina</span>
+          <span class="creator-tag">Pavel</span>
+          <span class="creator-tag">Brahian</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ HEADER ═══════ -->
+<header style="flex-shrink:0; height:50px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; background:var(--panel); border-bottom:1px solid var(--border); box-shadow: 0 2px 20px rgba(0,0,0,0.4);">
+  <div style="display:flex; align-items:center; gap:12px;">
+    <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+      <polygon points="15,2 27,8.5 27,21.5 15,28 3,21.5 3,8.5" stroke="#4ade80" stroke-width="1.5" fill="rgba(74,222,128,0.07)"/>
+      <circle cx="15" cy="15" r="4" fill="none" stroke="#4ade80" stroke-width="1" opacity="0.6"/>
+      <circle cx="15" cy="15" r="2" fill="#4ade80"/>
+      <line x1="15" y1="2" x2="15" y2="8" stroke="#4ade80" stroke-width="0.8" opacity="0.4"/>
+      <line x1="15" y1="22" x2="15" y2="28" stroke="#4ade80" stroke-width="0.8" opacity="0.4"/>
+    </svg>
+    <div>
+      <div id="header-title" style="font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:16px; color:var(--neon); letter-spacing:0.03em; line-height:1; font-optical-sizing:auto;">GOVCAMP 2026</div>
+      <div id="header-subtitle" style="font-family:'DM Mono',monospace; font-size:8px; color:var(--text3); letter-spacing:0.18em; margin-top:4px; line-height:1;">MONITOR AMBIENTAL IA · CAQUETÁ</div>
+    </div>
+  </div>
+  <div id="header-badges" style="display:flex; align-items:center; gap:12px;">
+    <div style="display:flex; align-items:center; gap:6px;">
+      <div class="pulse-dot"><div class="pulse-inner"></div></div>
+      <span style="font-family:'DM Mono',monospace; font-size:8px; color:var(--text3); letter-spacing:0.16em;">SISTEMA ACTIVO</span>
+    </div>
+    <div style="width:1px; height:14px; background:var(--border2);"></div>
+    <div style="font-family:'DM Mono',monospace; font-size:8px; color:var(--text3); letter-spacing:0.06em;">CNN ResNet50 <span style="color:var(--neon); font-weight:500;">v2.1.4</span></div>
+    <div style="font-family:'DM Mono',monospace; font-size:8px; color:var(--text3); letter-spacing:0.06em;">LSTM-IF <span style="color:var(--aqua); font-weight:500;">v1.8.2</span></div>
+  </div>
+  <div style="text-align:right;">
+    <div id="clock" style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:16px; color:var(--neon); letter-spacing:0.02em; line-height:1; font-optical-sizing:auto;">00:00:00</div>
+    <div id="datestamp" style="font-family:'DM Mono',monospace; font-size:8px; color:var(--text3); margin-top:4px; letter-spacing:0.10em;">—</div>
+  </div>
+</header>
+
+<!-- ═══════ MAIN ═══════ -->
+<main id="main-layout" style="flex:1; display:flex; overflow:hidden; min-height:0;">
+
+  <!-- ─── LEFT PANEL ─── -->
+  <aside id="left-panel" style="flex-shrink:0; width:300px; display:flex; flex-direction:column; background:var(--panel); border-right:1px solid var(--border); overflow:hidden;">
+
+    <!-- KPI Grid -->
+    <div id="kpi-grid" style="padding:10px; display:grid; grid-template-columns:1fr 1fr; gap:8px; flex-shrink:0;">
+      <div class="kpi-card fade-up" style="animation-delay:0.08s">
+        <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.10em; color:var(--text3); margin-bottom:6px; font-weight:500;">Alertas Activas</div>
+        <div style="display:flex; align-items:flex-end; justify-content:space-between;">
+          <span id="kv-alertas" style="font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:28px; line-height:1; font-optical-sizing:auto; color:var(--red);">0</span>
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style="margin-bottom:3px; opacity:0.8;"><path d="M7.5 2L13 12H2L7.5 2Z" stroke="#ef4444" stroke-width="1.4" fill="rgba(239,68,68,0.15)"/><line x1="7.5" y1="6.5" x2="7.5" y2="9.5" stroke="#ef4444" stroke-width="1.4"/><circle cx="7.5" cy="11" r="0.6" fill="#ef4444"/></svg>
+        </div>
+        <div style="font-size:8px; color:var(--text3); margin-top:4px;"><span class="blink" style="color:var(--red);">●</span> 3 críticas activas</div>
+      </div>
+      <div class="kpi-card fade-up" style="animation-delay:0.16s">
+        <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.10em; color:var(--text3); margin-bottom:6px; font-weight:500;">Has. Afectadas</div>
+        <div style="display:flex; align-items:flex-end; justify-content:space-between;">
+          <span id="kv-has" style="font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:28px; line-height:1; font-optical-sizing:auto; color:var(--amber);">0</span>
+        </div>
+        <div style="font-size:8px; color:var(--text3); margin-top:4px;">+2,450 vs sem. anterior</div>
+      </div>
+      <div class="kpi-card fade-up" style="animation-delay:0.24s">
+        <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.10em; color:var(--text3); margin-bottom:6px; font-weight:500;">Estac. Críticas</div>
+        <div style="display:flex; align-items:flex-end; justify-content:space-between;">
+          <span id="kv-estac" style="font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:28px; line-height:1; font-optical-sizing:auto; color:var(--aqua);">0</span>
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style="margin-bottom:3px; opacity:0.8;"><circle cx="7.5" cy="7.5" r="5.5" stroke="#22d3ee" stroke-width="1.2"/><path d="M3.5 7.5h8M7.5 3.5v8" stroke="#22d3ee" stroke-width="1.2"/></svg>
+        </div>
+        <div style="font-size:8px; color:var(--text3); margin-top:4px;">ICA &lt; 40 / 6 total</div>
+      </div>
+      <div class="kpi-card fade-up" style="animation-delay:0.32s">
+        <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.10em; color:var(--text3); margin-bottom:6px; font-weight:500;">Detecciones 24h</div>
+        <div style="display:flex; align-items:flex-end; justify-content:space-between;">
+          <span id="kv-det" style="font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:28px; line-height:1; font-optical-sizing:auto; color:var(--neon);">0</span>
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style="margin-bottom:3px; opacity:0.8;"><polyline points="1.5,12 4.5,7.5 7.5,8.5 10.5,4.5 13.5,2.5" stroke="#4ade80" stroke-width="1.3" fill="none"/><circle cx="13.5" cy="2.5" r="1.5" fill="#4ade80"/></svg>
+        </div>
+        <div style="font-size:8px; color:var(--text3); margin-top:4px;">CNN + LSTM activos</div>
+      </div>
+    </div>
+
+    <div style="margin:0 10px; height:1px; background:var(--border2); flex-shrink:0;"></div>
+
+    <!-- AI Layer controls -->
+    <div class="fade-up" style="padding:7px 10px; flex-shrink:0; animation-delay:0.4s;">
+      <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.10em; color:var(--text3); margin-bottom:5px; font-weight:500;">Monitoreo IA</div>
+      <div style="display:flex; gap:5px;">
+        <button class="layer-btn on-all" id="btn-all"   onclick="setLayer('all')">◈ TODOS</button>
+        <button class="layer-btn"        id="btn-def"   onclick="setLayer('def')">⬡ DEFOREST.</button>
+        <button class="layer-btn"        id="btn-water" onclick="setLayer('water')">◎ HÍDRICO</button>
+      </div>
+    </div>
+
+    <div style="margin:0 10px; height:1px; background:var(--border2); flex-shrink:0;"></div>
+
+    <!-- ─── INFRAESTRUCTURA HÍDRICA ─── -->
+    <div style="flex-shrink:0; border-bottom:1px solid var(--border2);">
+      <div id="infra-hdr" onclick="toggleInfraSection()">
+        <div style="font-size:8px; text-transform:uppercase; letter-spacing:.10em; color:var(--text3); font-weight:500;">Infraestructura Hídrica</div>
+        <div style="display:flex; align-items:center; gap:5px;">
+          <span id="infra-stat-dep" class="infra-stat-badge pending">dep. ⏳</span>
+          <span id="infra-stat-pts" class="infra-stat-badge pending">pts. ⏳</span>
+          <span id="infra-stat-rio" class="infra-stat-badge pending">ríos ⏳</span>
+          <span id="infra-chevron">▼</span>
+        </div>
+      </div>
+      <div id="infra-body" style="display:none;">
+        <div style="padding:4px 10px 6px; display:flex; gap:4px; flex-wrap:wrap;">
+          <button class="infra-type-btn on" id="ibtn-deposito" onclick="toggleInfraType('deposito')">▪ DEPÓSITOS</button>
+          <button class="infra-type-btn on" id="ibtn-punto"    onclick="toggleInfraType('punto')">● PUNTOS</button>
+          <button class="infra-type-btn on" id="ibtn-rio"      onclick="toggleInfraType('rio')">〜 RÍOS</button>
+        </div>
+        <div style="padding:0 10px 6px;">
+          <input id="infra-search" type="text" placeholder="BUSCAR ELEMENTO..." oninput="searchInfra(this.value)" autocomplete="off">
+        </div>
+        <div id="infra-tree">
+          <div class="tree-spinner">CARGANDO INFRAESTRUCTURA...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div style="padding:8px 10px; flex-shrink:0; border-bottom:1px solid var(--border2);">
+      <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.10em; color:var(--text3); margin-bottom:6px; font-weight:500;">Leyenda</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 10px;">
+        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(239,68,68,0.45);border:1px solid #ef4444;"></div>CRÍTICO</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(245,158,11,0.45);border:1px solid #f59e0b;"></div>ALERTA</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(234,179,8,0.45);border:1px solid #eab308;"></div>VIGILANCIA</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(74,222,128,0.45);border:1px solid #4ade80;"></div>NORMAL</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#22d3ee;border:2px solid rgba(255,255,255,0.5);"></div>ESTACIÓN ICA</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#ef4444;border:2px solid rgba(255,255,255,0.5);"></div>EST. CRÍTICA</div>
+      </div>
+      <div style="margin-top:6px; padding-top:6px; border-top:1px solid var(--border2);">
+        <div style="font-size:7px;text-transform:uppercase;letter-spacing:.10em;color:var(--text3);margin-bottom:5px;">Infraestructura Real · IDEAM</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 10px;">
+          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:11px;height:8px;border-radius:1px;flex-shrink:0;background:rgba(64,196,255,.25);border:1px solid #40c4ff;"></div>DEPÓSITO</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#1de9b6;border:1.5px solid rgba(255,255,255,.4);"></div>PUNTO DIST.</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:12px;height:2px;flex-shrink:0;background:#38bdf8;border-radius:1px;"></div>RÍO / ARROYO</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:11px;height:8px;border-radius:1px;flex-shrink:0;background:transparent;border:1.5px solid #4ade80;"></div>LÍMITE DPTO.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert Feed -->
+    <div id="alert-feed-wrap" style="flex:1; overflow:hidden; display:flex; flex-direction:column; min-height:0;">
+      <div style="padding:7px 10px 4px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.14em; color:var(--text3);">Alertas Recientes</div>
+        <div style="font-size:8px; padding:1px 6px; border-radius:3px; background:var(--red-dim); border:1px solid rgba(239,68,68,0.25); color:var(--red);" class="blink">LIVE</div>
+      </div>
+      <div id="alert-feed" style="flex:1; overflow-y:auto; padding:0 10px 10px; display:flex; flex-direction:column; gap:4px;"></div>
+    </div>
+
+    <div style="margin:0 10px; height:1px; background:var(--border2); flex-shrink:0;"></div>
+
+    <!-- Team -->
+    <div style="padding:7px 10px; flex-shrink:0;">
+      <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.10em; color:var(--text3); margin-bottom:5px; font-weight:500;">Equipo · Semana 3/4</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:3px;">
+        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:5px;height:5px;border-radius:50%;background:var(--neon);flex-shrink:0;"></div>Bryan <span style="color:var(--text3);">(CNN)</span></div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:5px;height:5px;border-radius:50%;background:var(--neon);flex-shrink:0;"></div>Pavel <span style="color:var(--text3);">(LSTM)</span></div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:5px;height:5px;border-radius:50%;background:var(--neon);flex-shrink:0;"></div>Brian <span style="color:var(--text3);">(Dash)</span></div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;"></div>Carolina <span style="color:var(--text3);">(Docs)</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ─── MAP ─── -->
+  <div id="map-wrap" style="flex:1; position:relative; overflow:hidden; min-width:0;">
+    <div id="radar-line"></div>
+    <div id="map" style="height:100%; width:100%;"></div>
+    <div id="map-badges">
+      <div id="scan-badge">
+        <div class="pulse-inner" style="width:5px;height:5px;"></div>
+        ÚLTIMO ESCANEO: <span id="scan-time" style="color:var(--neon); margin-left:4px;">—</span>
+      </div>
+      <div id="coord-badge">1.0000°N  74.9000°O · z7</div>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+// ═══════════════════════════════════════════════════════
+//  DATA PATHS
+// ═══════════════════════════════════════════════════════
+const DATA_PATHS = {
+  boundary: 'data/caqueta_boundary.geojson',
+  deposito: 'data/unified_deposito_agua_r.geojson',
+  punto:    'data/unified_punto_distribucion.geojson',
+  rio:      'data/unified_rios_caqueta.geojson',
+};
+
+// ═══════════════════════════════════════════════════════
+//  INFRA CONFIG
+// ═══════════════════════════════════════════════════════
+const INFRA_CFG = {
+  deposito: { color:'#40c4ff', label:'Depósito de Agua',      icon:'▪', dotCls:'poly' },
+  punto:    { color:'#1de9b6', label:'Punto de Distribución', icon:'●', dotCls:''     },
+  rio:      { color:'#38bdf8', label:'Río / Arroyo',          icon:'〜', dotCls:'line' },
+};
+
+// ═══════════════════════════════════════════════════════
+//  INFRA STATE
+// ═══════════════════════════════════════════════════════
+const infra = {
+  leafletLayers: { deposito:null, punto:null, rio:null, boundary:null },
+  visible:       { deposito:true, punto:true, rio:true },
+  features:      { deposito:[], punto:[], rio:[] },
+  loaded:        { deposito:false, punto:false, rio:false },
+  sectionOpen:   false,
+  groupOpen:     { deposito:false, punto:false, rio:false },
+  searchQuery:   '',
+};
+
+// ═══════════════════════════════════════════════════════
+//  MAP INIT
+// ═══════════════════════════════════════════════════════
+const map = L.map('map', { center:[1.0,-74.9], zoom:7, zoomControl:true });
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  subdomains:'abcd', maxZoom:19,
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+}).addTo(map);
+
+map.attributionControl.setPrefix('GovCamp 2026 · <b>Savia Visor</b>');
+
+map.on('mousemove', e => {
+  const la = e.latlng.lat.toFixed(4), ln = Math.abs(e.latlng.lng).toFixed(4);
+  document.getElementById('coord-badge').textContent = `${la}°N  ${ln}°O · z${map.getZoom()}`;
+});
+
+// ═══════════════════════════════════════════════════════
+//  MOCK AI DATA
+// ═══════════════════════════════════════════════════════
+const DEF_ZONES = [
+  { name:'Sector Norte Caquetá',     level:'CRÍTICO',    color:'#ef4444', hectares:8450, confidence:94.2, detected:'2026-05-26 14:23', coords:[[2.30,-75.20],[2.30,-74.30],[1.80,-74.30],[1.80,-75.20]] },
+  { name:'Cuenca Río Caguán',        level:'ALERTA',     color:'#f59e0b', hectares:3200, confidence:87.5, detected:'2026-05-26 13:55', coords:[[1.20,-75.40],[1.20,-74.50],[0.60,-74.50],[0.60,-75.40]] },
+  { name:'Corredor Andino-Amazónico',level:'VIGILANCIA', color:'#eab308', hectares:1100, confidence:79.1, detected:'2026-05-25 09:10', coords:[[0.30,-76.20],[0.30,-75.40],[-0.30,-75.40],[-0.30,-76.20]] },
+  { name:'Piedemonte Sur',           level:'NORMAL',     color:'#4ade80', hectares:450,  confidence:91.3, detected:'2026-05-24 07:30', coords:[[-0.50,-75.90],[-0.50,-75.10],[-1.10,-75.10],[-1.10,-75.90]] },
+];
+
+const WATER_STATIONS = [
+  { name:'Estación Florencia',     lat:1.6144, lng:-75.6062, ica:42, ph:5.2, turb:48.3, o2:4.1, anomaly:true,  updated:'14:18' },
+  { name:'Estación Río Orteguaza', lat:1.10,   lng:-75.82,   ica:67, ph:6.8, turb:22.1, o2:6.2, anomaly:false, updated:'14:15' },
+  { name:'Estación San Vicente',   lat:2.1158, lng:-74.7673, ica:55, ph:6.4, turb:31.7, o2:5.5, anomaly:false, updated:'14:10' },
+  { name:'Estación Puerto Rico',   lat:1.97,   lng:-75.17,   ica:78, ph:7.1, turb:12.4, o2:7.8, anomaly:false, updated:'14:08' },
+  { name:'Estación La Montañita',  lat:1.45,   lng:-75.43,   ica:31, ph:4.9, turb:67.2, o2:3.2, anomaly:true,  updated:'14:20' },
+  { name:'Estación Milán',         lat:1.02,   lng:-75.47,   ica:62, ph:6.6, turb:28.9, o2:5.9, anomaly:false, updated:'14:05' },
+];
+
+const ALERTS_DATA = [
+  { time:'14:23', name:'Sector Norte Caquetá',   type:'DEFOREST.', level:'CRÍTICO',    icon:'⬡' },
+  { time:'14:20', name:'La Montañita (ICA: 31)', type:'HÍDRICO',   level:'CRÍTICO',    icon:'◎' },
+  { time:'14:18', name:'Florencia (ICA: 42)',    type:'HÍDRICO',   level:'MALO',       icon:'◎' },
+  { time:'13:55', name:'Cuenca Río Caguán',      type:'DEFOREST.', level:'ALERTA',     icon:'⬡' },
+  { time:'13:40', name:'San Vicente (ICA: 55)',  type:'HÍDRICO',   level:'REGULAR',    icon:'◎' },
+  { time:'12:10', name:'Corredor Andino',        type:'DEFOREST.', level:'VIGILANCIA', icon:'⬡' },
+  { time:'11:45', name:'Río Orteguaza (ICA:67)', type:'HÍDRICO',   level:'REGULAR',    icon:'◎' },
+];
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function levelColor(level) {
+  return { CRÍTICO:'#ef4444', ALERTA:'#f59e0b', VIGILANCIA:'#eab308', NORMAL:'#4ade80',
+           MALO:'#ef4444', REGULAR:'#f59e0b', ACEPTABLE:'#84cc16', BUENO:'#4ade80' }[level] || '#fff';
+}
+
+function icaLevel(v) {
+  if (v < 40) return ['MALO',      '#ef4444'];
+  if (v < 60) return ['REGULAR',   '#f59e0b'];
+  if (v < 75) return ['ACEPTABLE', '#84cc16'];
+  return            ['BUENO',      '#4ade80'];
+}
+
+function featName(tipo, props) {
+  if (tipo === 'deposito') return props.DAIdentif || props.name || `DEP-${props.OBJECTID||'?'}`;
+  if (tipo === 'punto')    return props.PDIdentif || props.name || `PTO-${props.OBJECTID||'?'}`;
+  return props.name || props['name:es'] || (props['@id']||'').replace('way/','') || 'Arroyo';
+}
+
+// ═══════════════════════════════════════════════════════
+//  AI LAYER RENDERING
+// ═══════════════════════════════════════════════════════
+const defLayers = DEF_ZONES.map(z => {
+  const fillOpacity = { CRÍTICO:0.28, ALERTA:0.22, VIGILANCIA:0.18, NORMAL:0.14 }[z.level] || 0.2;
+  const poly = L.polygon(z.coords, {
+    color:z.color, fillColor:z.color, fillOpacity, weight:1.8,
+    dashArray: z.level === 'NORMAL' ? '5,5' : null,
+  });
+  poly.bindPopup(`
+    <div class="pop-wrap">
+      <div class="pop-title" style="color:${z.color};">${z.name}</div>
+      <div class="pop-grid">
+        <div><div class="pop-label">Nivel</div><div style="color:${z.color};font-weight:600;">${z.level}</div></div>
+        <div><div class="pop-label">Hectáreas</div><div>${z.hectares.toLocaleString('es-CO')} ha</div></div>
+        <div><div class="pop-label">Confianza CNN</div><div style="color:#4ade80;">${z.confidence}%</div></div>
+        <div><div class="pop-label">Modelo</div><div>ResNet50</div></div>
+      </div>
+      <div class="pop-foot">Detectado: ${z.detected}</div>
+    </div>`);
+  poly.addTo(map);
+  return poly;
+});
+
+const waterLayers = WATER_STATIONS.map(s => {
+  const [lbl, col] = icaLevel(s.ica);
+  const ringHtml = s.anomaly
+    ? `<div style="position:absolute;inset:-8px;border-radius:50%;border:1.5px solid ${col};opacity:0.5;animation:pulse-ring 1.5s ease-out infinite;"></div>`
+    : '';
+  const icon = L.divIcon({
+    html: `<div style="position:relative;width:22px;height:22px;">${ringHtml}<div style="width:22px;height:22px;border-radius:50%;background:${col};border:2.5px solid rgba(255,255,255,0.75);display:flex;align-items:center;justify-content:center;font-size:7px;color:white;font-weight:700;font-family:'DM Mono',monospace;box-shadow:0 0 10px ${col}66;position:relative;z-index:1;">${s.ica}</div></div>`,
+    className:'', iconSize:[22,22], iconAnchor:[11,11], popupAnchor:[0,-14],
+  });
+  const anomTxt = s.anomaly
+    ? `<div style="padding:5px 7px;border-radius:4px;font-size:9px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;margin-bottom:6px;">⚠ Anomalía detectada — Isolation Forest</div>`
+    : `<div style="padding:5px 7px;border-radius:4px;font-size:9px;background:rgba(26,58,30,0.4);border:1px solid var(--border2);color:rgba(209,250,233,0.5);margin-bottom:6px;">Sin anomalías detectadas</div>`;
+  const marker = L.marker([s.lat, s.lng], { icon });
+  marker.bindPopup(`
+    <div class="pop-wrap">
+      <div class="pop-title" style="color:${col};">${s.name}</div>
+      <div style="margin-bottom:10px;">
+        <div class="pop-label" style="margin-bottom:5px;">Índice de Calidad del Agua (ICA)</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:24px;color:${col};line-height:1;">${s.ica}</span>
+          <div style="flex:1;">
+            <div class="ica-bar-wrap"><div class="ica-bar-fill" style="width:${s.ica}%;background:${col};"></div></div>
+            <div style="font-size:9px;color:${col};margin-top:3px;">${lbl}</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:10px;color:var(--text2);margin-bottom:8px;">
+        <div><div class="pop-label">pH</div><div>${s.ph}</div></div>
+        <div><div class="pop-label">Turbidez</div><div>${s.turb} NTU</div></div>
+        <div><div class="pop-label">O₂ (mg/L)</div><div>${s.o2}</div></div>
+      </div>
+      ${anomTxt}
+      <div class="pop-foot">Actualizado: ${s.updated} · LSTM-IF v1.8.2</div>
+    </div>`);
+  marker.addTo(map);
+  return marker;
+});
+
+function setLayer(mode) {
+  ['btn-all','btn-def','btn-water'].forEach(id => document.getElementById(id).className = 'layer-btn');
+  const classMap = { all:'on-all', def:'on-def', water:'on-water' };
+  document.getElementById(`btn-${mode}`).classList.add(classMap[mode]);
+  defLayers.forEach(l   => mode !== 'water' ? map.addLayer(l) : map.removeLayer(l));
+  waterLayers.forEach(l => mode !== 'def'   ? map.addLayer(l) : map.removeLayer(l));
+}
+
+// ═══════════════════════════════════════════════════════
+//  BOUNDARY RENDERING
+// ═══════════════════════════════════════════════════════
+function renderBoundary(gj) {
+  // Glow layer (wide, transparent — added first, renders behind)
+  L.geoJSON(gj, {
+    interactive:false,
+    style:{ color:'#4ade80', weight:10, opacity:.07, fillOpacity:0 },
+  }).addTo(map);
+
+  infra.leafletLayers.boundary = L.geoJSON(gj, {
+    interactive:false,
+    style:{ color:'#4ade80', weight:1.8, opacity:.75, fillColor:'#022c22', fillOpacity:.04 },
+  }).addTo(map);
+
+  try { map.fitBounds(infra.leafletLayers.boundary.getBounds(), { padding:[30,30] }); } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════
+//  INFRA POPUP BUILDER
+// ═══════════════════════════════════════════════════════
+function buildInfraPopup(tipo, props, gt) {
+  const cfg = INFRA_CFG[tipo];
+  const name = featName(tipo, props);
+  let html = `<div class="pop-wrap">`;
+  html += `<div class="pop-title" style="color:${cfg.color};">${name}</div>`;
+  html += `<div style="margin-bottom:8px;font-size:9px;color:${cfg.color};letter-spacing:.08em;">${cfg.icon} ${cfg.label}</div>`;
+
+  if (tipo === 'deposito') {
+    html += `<div class="pop-grid">`;
+    if (props.DATipo)       html += `<div><div class="pop-label">Categoría</div><div>${props.DATipo}</div></div>`;
+    if (props.SHAPE_Area)   html += `<div><div class="pop-label">Área</div><div>${parseFloat(props.SHAPE_Area).toFixed(1)} m²</div></div>`;
+    if (props.SHAPE_Length) html += `<div><div class="pop-label">Perímetro</div><div>${parseFloat(props.SHAPE_Length).toFixed(1)} m</div></div>`;
+    html += `</div>`;
+  }
+  if (tipo === 'punto' && props.PDTipo) {
+    html += `<div class="pop-grid"><div><div class="pop-label">Tipo</div><div>${props.PDTipo}</div></div></div>`;
+  }
+  if (tipo === 'rio') {
+    html += `<div class="pop-grid">`;
+    if (props.waterway) html += `<div><div class="pop-label">Vía Hídrica</div><div>${props.waterway}</div></div>`;
+    if (props.wikidata) html += `<div><div class="pop-label">Wikidata</div><div>${props.wikidata}</div></div>`;
+    html += `</div>`;
+  }
+  if (gt === 'Point') {
+    // coords handled by Leaflet
+  }
+
+  html += `<div class="pop-foot">Fuente: datos.gov.co · IDEAM / OSM</div></div>`;
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════
+//  INFRA LAYER RENDERING
+// ═══════════════════════════════════════════════════════
+function renderInfraLayer(gj, tipo) {
+  const cfg  = INFRA_CFG[tipo];
+  const feats = gj.features || [];
+
+  const layer = L.geoJSON(gj, {
+    style(feat) {
+      const gt = feat.geometry?.type || '';
+      if (gt.includes('Polygon')) return { color:cfg.color, weight:1.2, opacity:.85, fillColor:cfg.color, fillOpacity:.18 };
+      return { color:cfg.color, weight: tipo==='rio' ? 1 : 1.5, opacity: tipo==='rio' ? .6 : .85 };
+    },
+    pointToLayer(feat, latlng) {
+      return L.circleMarker(latlng, { radius:4, color:cfg.color, weight:1.5, fillColor:cfg.color, fillOpacity:.8 });
+    },
+    onEachFeature(feat, lyr) {
+      const props = feat.properties || {};
+      const gt    = feat.geometry?.type || '';
+      const name  = featName(tipo, props);
+      const idx   = infra.features[tipo].length;
+      infra.features[tipo].push({ name, layer:lyr, props, gt });
+
+      lyr.on('mouseover', function(e) {
+        if (this.setStyle) {
+          if (gt.includes('Polygon'))     this.setStyle({ fillOpacity:.4, weight:2 });
+          else if (!gt.includes('Point')) this.setStyle({ weight: tipo==='rio' ? 2.5 : 3 });
+        }
+        this.bindTooltip(
+          `<span style="color:${cfg.color}">${name}</span>`,
+          { sticky:true, direction:'top' }
+        ).openTooltip(e.latlng || e.target.getLatLng?.());
+      });
+      lyr.on('mouseout', function() {
+        if (this.setStyle) {
+          if (gt.includes('Polygon'))     this.setStyle({ fillOpacity:.18, weight:1.2 });
+          else if (!gt.includes('Point')) this.setStyle({ weight: tipo==='rio' ? 1 : 1.5 });
+        }
+        this.unbindTooltip?.();
+      });
+      lyr.on('click', () => {
+        const center = lyr.getBounds ? lyr.getBounds().getCenter() : lyr.getLatLng?.();
+        if (center) L.popup({ maxWidth:260 }).setLatLng(center).setContent(buildInfraPopup(tipo, props, gt)).openOn(map);
+        selectInTree(tipo, idx);
+      });
+    },
+  }).addTo(map);
+
+  infra.leafletLayers[tipo] = layer;
+  infra.loaded[tipo] = true;
+  updateInfraStats();
+  renderTree(infra.searchQuery);
+}
+
+// ═══════════════════════════════════════════════════════
+//  DATA LOADING
+// ═══════════════════════════════════════════════════════
+async function loadData() {
+  try {
+    const [boundaryGJ, depositoGJ, puntoGJ] = await Promise.all([
+      fetch(DATA_PATHS.boundary).then(r => r.json()),
+      fetch(DATA_PATHS.deposito).then(r => r.json()),
+      fetch(DATA_PATHS.punto).then(r => r.json()),
+    ]);
+    renderBoundary(boundaryGJ);
+    renderInfraLayer(depositoGJ, 'deposito');
+    renderInfraLayer(puntoGJ,    'punto');
+  } catch(e) {
+    console.warn('Error cargando capas base:', e);
+  }
+
+  // Rios load async (11 MB) — does not block the rest
+  fetch(DATA_PATHS.rio)
+    .then(r => r.json())
+    .then(gj => renderInfraLayer(gj, 'rio'))
+    .catch(() => {
+      const el = document.getElementById('infra-stat-rio');
+      if (el) { el.textContent = 'RÍOS ✗'; el.classList.remove('pending'); el.style.color = 'var(--red)'; }
+    });
+}
+
+// ═══════════════════════════════════════════════════════
+//  INFRA STATS BADGES
+// ═══════════════════════════════════════════════════════
+function updateInfraStats() {
+  const counts = { deposito:infra.features.deposito.length, punto:infra.features.punto.length, rio:infra.features.rio.length };
+  const map_ = { deposito:'infra-stat-dep', punto:'infra-stat-pts', rio:'infra-stat-rio' };
+  const labels = { deposito:'dep.', punto:'pts.', rio:'ríos' };
+
+  Object.keys(counts).forEach(t => {
+    const el = document.getElementById(map_[t]);
+    if (!el) return;
+    if (counts[t] > 0) {
+      el.textContent = `${counts[t]} ${labels[t]}`;
+      el.classList.remove('pending');
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  INFRA SECTION TOGGLE
+// ═══════════════════════════════════════════════════════
+function toggleInfraSection() {
+  infra.sectionOpen = !infra.sectionOpen;
+  document.getElementById('infra-body').style.display = infra.sectionOpen ? 'block' : 'none';
+  document.getElementById('infra-chevron').classList.toggle('open', infra.sectionOpen);
+}
+
+// ═══════════════════════════════════════════════════════
+//  INFRA TYPE TOGGLE
+// ═══════════════════════════════════════════════════════
+function toggleInfraType(tipo) {
+  infra.visible[tipo] = !infra.visible[tipo];
+  const lyr = infra.leafletLayers[tipo];
+  if (lyr) infra.visible[tipo] ? map.addLayer(lyr) : map.removeLayer(lyr);
+  const btn = document.getElementById(`ibtn-${tipo}`);
+  if (btn) { btn.classList.toggle('on', infra.visible[tipo]); btn.classList.toggle('off', !infra.visible[tipo]); }
+  renderTree(infra.searchQuery);
+}
+
+// ═══════════════════════════════════════════════════════
+//  TREEVIEW
+// ═══════════════════════════════════════════════════════
+function renderTree(filter) {
+  const el = document.getElementById('infra-tree');
+  if (!el) return;
+  infra.searchQuery = filter || '';
+  const q = infra.searchQuery.toLowerCase().trim();
+  let html = '';
+
+  ['deposito','punto','rio'].forEach(tipo => {
+    const cfg    = INFRA_CFG[tipo];
+    const feats  = infra.features[tipo];
+    const loaded = infra.loaded[tipo];
+    const vis    = infra.visible[tipo];
+    const open   = infra.groupOpen[tipo] || !!q;
+
+    const filtered = q
+      ? feats.map((f,i) => ({...f,i})).filter(f => f.name.toLowerCase().includes(q))
+      : feats.map((f,i) => ({...f,i}));
+
+    html += `<div class="tree-group-hdr" onclick="toggleTreeGroup('${tipo}')">
+      <span class="tree-g-arrow${open?' open':''}">▶</span>
+      <span class="tree-g-icon" style="color:${cfg.color}">${cfg.icon}</span>
+      <span class="tree-g-label" style="color:${cfg.color}">${cfg.label.toUpperCase()}</span>
+      <span class="tree-g-count">${loaded ? feats.length : '...'}</span>
+      <button class="tree-g-eye" onclick="event.stopPropagation();toggleInfraType('${tipo}')">${vis?'◉':'◎'}</button>
+    </div>`;
+
+    if (!loaded) {
+      if (open) html += `<div class="tree-spinner">CARGANDO ${tipo.toUpperCase()}S...</div>`;
+      return;
+    }
+
+    if (open) {
+      if (filtered.length === 0) {
+        html += `<div class="tree-empty">SIN RESULTADOS</div>`;
+      } else {
+        html += `<div class="tree-feat-list">`;
+        filtered.forEach(({name, gt, i}) => {
+          const dotCls = (gt||'').includes('Polygon') ? 'poly' : (gt||'').includes('Line') ? 'line' : '';
+          html += `<div class="tree-feat-item" id="tfi-${tipo}-${i}" onclick="zoomToFeat('${tipo}',${i})">
+            <div class="tree-feat-dot ${dotCls}" style="background:${cfg.color}"></div>
+            <span class="tree-feat-name" title="${name}">${name}</span>
+            <button class="tree-feat-zoom" onclick="event.stopPropagation();zoomToFeat('${tipo}',${i})">⊕</button>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+    }
+  });
+
+  el.innerHTML = html || `<div class="tree-empty">CARGANDO DATOS...</div>`;
+}
+
+function toggleTreeGroup(tipo) {
+  infra.groupOpen[tipo] = !infra.groupOpen[tipo];
+  renderTree(infra.searchQuery);
+}
+
+function searchInfra(q) {
+  renderTree(q);
+}
+
+function zoomToFeat(tipo, idx) {
+  const item = infra.features[tipo]?.[idx];
+  if (!item?.layer) return;
+  if (!infra.visible[tipo]) toggleInfraType(tipo);
+  try {
+    if (item.layer.getBounds) map.fitBounds(item.layer.getBounds(), { maxZoom:15, padding:[50,50] });
+    else map.setView(item.layer.getLatLng(), 14);
+  } catch(e) {}
+  setTimeout(() => {
+    const center = item.layer.getBounds ? item.layer.getBounds().getCenter() : item.layer.getLatLng?.();
+    if (center) L.popup({ maxWidth:260 }).setLatLng(center).setContent(buildInfraPopup(tipo, item.props, item.gt)).openOn(map);
+  }, 320);
+  selectInTree(tipo, idx);
+}
+
+function selectInTree(tipo, idx) {
+  document.querySelectorAll('.tree-feat-item.sel').forEach(el => el.classList.remove('sel'));
+  const el = document.getElementById(`tfi-${tipo}-${idx}`);
+  if (el) { el.classList.add('sel'); el.scrollIntoView({ block:'nearest', behavior:'smooth' }); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  ZOOM-DEPENDENT RIVER WIDTH
+// ═══════════════════════════════════════════════════════
+map.on('zoomend', () => {
+  if (!infra.leafletLayers.rio) return;
+  const z = map.getZoom();
+  const w  = z < 9 ? 0.7 : z < 11 ? 1.1 : 1.8;
+  const op = z < 9 ? 0.55 : 0.75;
+  infra.leafletLayers.rio.setStyle({ weight:w, opacity:op });
+});
+
+// ═══════════════════════════════════════════════════════
+//  ALERT FEED
+// ═══════════════════════════════════════════════════════
+function buildAlertFeed(alerts) {
+  const feed = document.getElementById('alert-feed');
+  feed.innerHTML = '';
+  alerts.forEach((a, i) => {
+    const col = levelColor(a.level);
+    const el  = document.createElement('div');
+    el.className = 'alert-item slide-in';
+    el.style.animationDelay = `${i * 0.05}s`;
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+        <span style="font-size:8px;color:${col};letter-spacing:0.08em;font-weight:600;">${a.icon} ${a.type}</span>
+        <span style="font-size:8px;color:var(--text3);">${a.time}</span>
+      </div>
+      <div style="font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.name}</div>
+      <div style="display:inline-block;margin-top:3px;font-size:7px;padding:1px 5px;border-radius:2px;background:${col}18;border:1px solid ${col}40;color:${col};letter-spacing:0.07em;">${a.level}</div>`;
+    el.addEventListener('mouseenter', () => { el.style.borderColor = col; el.style.background = `${col}08`; });
+    el.addEventListener('mouseleave', () => { el.style.borderColor = 'var(--border2)'; el.style.background = 'rgba(6,27,10,0.5)'; });
+    feed.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  KPI COUNTERS
+// ═══════════════════════════════════════════════════════
+function animCount(id, target, dur = 1100) {
+  const el = document.getElementById(id);
+  const start = Date.now();
+  (function tick() {
+    const p    = Math.min((Date.now() - start) / dur, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(ease * target).toLocaleString('es-CO');
+    if (p < 1) requestAnimationFrame(tick);
+  })();
+}
+
+// ═══════════════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════════════
+function tick() {
+  const n  = new Date();
+  const hh = String(n.getHours()).padStart(2,'0');
+  const mm = String(n.getMinutes()).padStart(2,'0');
+  const ss = String(n.getSeconds()).padStart(2,'0');
+  document.getElementById('clock').textContent     = `${hh}:${mm}:${ss}`;
+  document.getElementById('scan-time').textContent = `${hh}:${mm}:${ss}`;
+  document.getElementById('datestamp').textContent =
+    n.toLocaleDateString('es-CO', { weekday:'short', day:'2-digit', month:'short', year:'numeric' }).toUpperCase();
+}
+tick();
+setInterval(tick, 1000);
+
+// ═══════════════════════════════════════════════════════
+//  LOADER SEQUENCE
+// ═══════════════════════════════════════════════════════
+(function () {
+  const LINES = [
+    { t:150,  ok:false, text:'Inicializando sistema de monitoreo ambiental...' },
+    { t:500,  ok:false, text:'Conectando a Google Earth Engine [API]...' },
+    { t:880,  ok:true,  text:'Modelo CNN ResNet50 v2.1.4 — cargado' },
+    { t:1200, ok:false, text:'Inicializando LSTM · Isolation Forest v1.8.2...' },
+    { t:1550, ok:true,  text:'Infraestructura hídrica IDEAM — depósitos + puntos [OK]' },
+    { t:1900, ok:true,  text:'Límite departamental Caquetá (MGN DANE 2025) [OK]' },
+    { t:2230, ok:true,  text:'Polígonos de deforestación [4 zonas] — cargados' },
+    { t:2620, ok:true,  text:'■ Sistema listo · ríos cargando en segundo plano', bright:true },
+  ];
+
+  const logEl = document.getElementById('loader-log');
+  const barEl = document.getElementById('loader-bar');
+  const pctEl = document.getElementById('loader-pct');
+  const t0    = Date.now();
+  const DUR   = 2900;
+
+  (function barTick() {
+    const p   = Math.min((Date.now() - t0) / DUR, 1);
+    const val = Math.round(p < 0.92 ? (p / 0.92) * 95 : 95 + (p - 0.92) / 0.08 * 5);
+    barEl.style.width = val + '%';
+    pctEl.textContent = val + '%';
+    if (p < 1) requestAnimationFrame(barTick);
+    else { barEl.style.width = '100%'; pctEl.textContent = '100%'; }
+  })();
+
+  LINES.forEach(({ t, ok, text, bright }) => {
+    setTimeout(() => {
+      const div   = document.createElement('div');
+      div.className = 'log-line';
+      const mark  = ok ? `<span class="l-ok">✓</span>` : `<span class="l-dim">›</span>`;
+      const style = bright ? ' style="color:rgba(209,250,233,0.85);font-weight:500;"' : '';
+      div.innerHTML = `${mark}<span${style}>${text}</span>`;
+      logEl.appendChild(div);
+    }, t);
+  });
+
+  setTimeout(() => {
+    document.getElementById('loader').classList.add('exiting');
+    setTimeout(() => { document.getElementById('loader').style.display = 'none'; }, 580);
+    animCount('kv-alertas', 7,     700);
+    animCount('kv-has',    13200, 1400);
+    animCount('kv-estac',  2,      600);
+    animCount('kv-det',    14,     950);
+  }, 3100);
+})();
+
+// ═══════════════════════════════════════════════════════
+//  LIVE ALERT (9s after page load)
+// ═══════════════════════════════════════════════════════
+setTimeout(() => {
+  const n = new Date();
+  const t = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+  ALERTS_DATA.unshift({ time:t, name:'Florencia — nuevo pulso (IA)', type:'HÍDRICO', level:'CRÍTICO', icon:'◎' });
+  buildAlertFeed(ALERTS_DATA);
+}, 9000);
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+buildAlertFeed(ALERTS_DATA);
+loadData();
+</script>
+</body>
+</html>
