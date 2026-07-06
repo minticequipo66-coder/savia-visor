@@ -1,0 +1,27 @@
+index.html
+  s_5b2cdd9247b3b9::t_d540fff71ef180 1-1114
+data/caqueta_boundary.geojson
+  s_5b2cdd9247b3b9::t_c0951596886ffa 1-8
+data/unified_deposito_agua_r.geojson
+  s_5b2cdd9247b3b9::t_44814aee99ea5f 1-51585
+data/unified_punto_distribucion.geojson
+  s_5b2cdd9247b3b9::t_8931c39dd9d987 1-9229
+data/unified_rios_caqueta.geojson
+  s_5b2cdd9247b3b9::t_a7b1ebde460e54 1-616859
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a9fba07fa3caea407b7998bd2c75a54265b9f7e6",
+  "prompts": {},
+  "sessions": {
+    "s_5b2cdd9247b3b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0cd8240f-df27-484e-94f6-e348cd48e3fa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "minticequipo66-coder <minticequipo66-coder@users.noreply.github.com>"
+    }
+  }
+}
