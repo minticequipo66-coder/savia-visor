@@ -300,6 +300,18 @@
     .dmg-layer-btn.on  { background: var(--amber-dim); border-color: rgba(245,158,11,.4); color: var(--amber); }
     .dmg-layer-btn.off { opacity: .35; }
 
+    /* ── Section master toggles (green) ── */
+    .sec-track {
+      width: 26px; height: 13px; border-radius: 7px;
+      background: var(--border); position: relative;
+      transition: background .25s; flex-shrink: 0;
+    }
+    .sec-track.on { background: var(--neon); box-shadow: 0 0 6px rgba(74,222,128,.3); }
+    .sec-track .dmg-thumb { background: rgba(255,255,255,.65); }
+    .sec-track.on .dmg-thumb { transform: translateX(13px); background: white; }
+    .sec-txt { font-size: 7.5px; letter-spacing: .1em; color: var(--text3); transition: color .2s; }
+    .sec-txt.on { color: var(--neon); }
+
     /* ── Loader ── */
     #loader {
       position: fixed; inset: 0; z-index: 99999;
@@ -481,22 +493,40 @@
 
     <div style="margin:0 10px; height:1px; background:var(--border2); flex-shrink:0;"></div>
 
-    <!-- AI Layer controls -->
-    <div class="fade-up" style="padding:7px 10px; flex-shrink:0; animation-delay:0.4s;">
-      <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.10em; color:var(--text3); margin-bottom:5px; font-weight:500;">Monitoreo IA</div>
-      <div style="display:flex; gap:5px;">
+    <!-- ─── MONITOREO ─── -->
+    <div style="flex-shrink:0; border-bottom:1px solid var(--border2);">
+      <div style="padding:6px 10px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:.10em;color:var(--text3);font-weight:500;">Monitoreo</div>
+        <button class="dmg-toggle" onclick="toggleSectionMonitoreo()">
+          <div class="sec-track on" id="mon-track"><div class="dmg-thumb"></div></div>
+          <span class="sec-txt on" id="mon-txt">ON</span>
+        </button>
+      </div>
+      <div id="mon-controls" style="padding:0 10px 5px; display:flex; gap:5px;">
         <button class="layer-btn on-all" id="btn-all"   onclick="setLayer('all')">◈ TODOS</button>
         <button class="layer-btn"        id="btn-def"   onclick="setLayer('def')">⬡ DEFOREST.</button>
         <button class="layer-btn"        id="btn-water" onclick="setLayer('water')">◎ HÍDRICO</button>
       </div>
+      <div id="mon-legend" style="padding:0 10px 8px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px;">
+          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(239,68,68,0.45);border:1px solid #ef4444;"></div>CRÍTICO</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(245,158,11,0.45);border:1px solid #f59e0b;"></div>ALERTA</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(234,179,8,0.45);border:1px solid #eab308;"></div>VIGILANCIA</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(74,222,128,0.45);border:1px solid #4ade80;"></div>NORMAL</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#22d3ee;border:2px solid rgba(255,255,255,0.5);"></div>ESTACIÓN ICA</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#ef4444;border:2px solid rgba(255,255,255,0.5);"></div>EST. CRÍTICA</div>
+        </div>
+      </div>
     </div>
-
-    <div style="margin:0 10px; height:1px; background:var(--border2); flex-shrink:0;"></div>
 
     <!-- ─── DAMAGE ZONES ─── -->
     <div style="flex-shrink:0; border-bottom:1px solid var(--border2);">
       <div style="padding:6px 10px 5px; display:flex; align-items:center; justify-content:space-between;">
-        <div style="font-size:8px;text-transform:uppercase;letter-spacing:.10em;color:var(--text3);font-weight:500;">Damage Zones</div>
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:.10em;color:var(--text3);font-weight:500;">Zonas de Daño</div>
+        <button class="dmg-toggle" onclick="toggleSectionZonasDano()">
+          <div class="sec-track on" id="zdano-track"><div class="dmg-thumb"></div></div>
+          <span class="sec-txt on" id="zdano-txt">ON</span>
+        </button>
       </div>
 
       <div style="padding:0 10px 6px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border2); padding-bottom:6px; margin-bottom:6px;">
@@ -527,6 +557,10 @@
           <span id="infra-stat-dep" class="infra-stat-badge pending">dep. ⏳</span>
           <span id="infra-stat-pts" class="infra-stat-badge pending">pts. ⏳</span>
           <span id="infra-stat-rio" class="infra-stat-badge pending">ríos ⏳</span>
+          <button class="dmg-toggle" onclick="event.stopPropagation();toggleSectionInfra()">
+            <div class="sec-track on" id="infra-sec-track"><div class="dmg-thumb"></div></div>
+            <span class="sec-txt on" id="infra-sec-txt">ON</span>
+          </button>
           <span id="infra-chevron">▼</span>
         </div>
       </div>
@@ -545,27 +579,6 @@
       </div>
     </div>
 
-    <!-- Legend -->
-    <div style="padding:8px 10px; flex-shrink:0; border-bottom:1px solid var(--border2);">
-      <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.10em; color:var(--text3); margin-bottom:6px; font-weight:500;">Leyenda</div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 10px;">
-        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(239,68,68,0.45);border:1px solid #ef4444;"></div>CRÍTICO</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(245,158,11,0.45);border:1px solid #f59e0b;"></div>ALERTA</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(234,179,8,0.45);border:1px solid #eab308;"></div>VIGILANCIA</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:rgba(74,222,128,0.45);border:1px solid #4ade80;"></div>NORMAL</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#22d3ee;border:2px solid rgba(255,255,255,0.5);"></div>ESTACIÓN ICA</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#ef4444;border:2px solid rgba(255,255,255,0.5);"></div>EST. CRÍTICA</div>
-      </div>
-      <div style="margin-top:6px; padding-top:6px; border-top:1px solid var(--border2);">
-        <div style="font-size:7px;text-transform:uppercase;letter-spacing:.10em;color:var(--text3);margin-bottom:5px;">Infraestructura Real · IDEAM</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 10px;">
-          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:11px;height:8px;border-radius:1px;flex-shrink:0;background:rgba(64,196,255,.25);border:1px solid #40c4ff;"></div>DEPÓSITO</div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#1de9b6;border:1.5px solid rgba(255,255,255,.4);"></div>PUNTO DIST.</div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:12px;height:2px;flex-shrink:0;background:#38bdf8;border-radius:1px;"></div>RÍO / ARROYO</div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:11px;height:8px;border-radius:1px;flex-shrink:0;background:transparent;border:1.5px solid #4ade80;"></div>LÍMITE DPTO.</div>
-        </div>
-      </div>
-    </div>
 
     <!-- Alert Feed -->
     <div id="alert-feed-wrap" style="flex-shrink:0; display:flex; flex-direction:column; border-bottom:1px solid var(--border2);">
@@ -573,19 +586,19 @@
         <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.14em; color:var(--text3);">Alertas Recientes</div>
         <div style="font-size:8px; padding:1px 6px; border-radius:3px; background:var(--red-dim); border:1px solid rgba(239,68,68,0.25); color:var(--red);" class="blink">LIVE</div>
       </div>
-      <div id="alert-feed" style="height:150px; overflow-y:auto; padding:0 10px 10px; display:flex; flex-direction:column; gap:4px;"></div>
+      <div id="alert-feed" style="height:200px; overflow-y:auto; padding:0 10px 10px; display:flex; flex-direction:column; gap:4px;"></div>
     </div>
 
     <div style="margin:0 10px; height:1px; background:var(--border2); flex-shrink:0;"></div>
 
     <!-- Team -->
-    <div style="padding:7px 10px; flex-shrink:0;">
-      <div style="font-size:8px; text-transform:uppercase; letter-spacing:0.10em; color:var(--text3); margin-bottom:5px; font-weight:500;">Equipo · Semana 3/4</div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:3px;">
-        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:5px;height:5px;border-radius:50%;background:var(--neon);flex-shrink:0;"></div>Bryan <span style="color:var(--text3);">(CNN)</span></div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:5px;height:5px;border-radius:50%;background:var(--neon);flex-shrink:0;"></div>Pavel <span style="color:var(--text3);">(LSTM)</span></div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:5px;height:5px;border-radius:50%;background:var(--neon);flex-shrink:0;"></div>Brian <span style="color:var(--text3);">(Dash)</span></div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:8px;color:var(--text2);"><div style="width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;"></div>Carolina <span style="color:var(--text3);">(Docs)</span></div>
+    <div style="padding:5px 10px 6px; flex-shrink:0;">
+      <div style="font-size:7px;text-transform:uppercase;letter-spacing:.10em;color:var(--text3);margin-bottom:4px;font-weight:500;">Equipo</div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px 12px;">
+        <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:var(--text2);"><div style="width:4px;height:4px;border-radius:50%;background:var(--neon);flex-shrink:0;"></div>Bryan <span style="color:var(--text3);">(CNN)</span></div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:var(--text2);"><div style="width:4px;height:4px;border-radius:50%;background:var(--neon);flex-shrink:0;"></div>Pavel <span style="color:var(--text3);">(LSTM)</span></div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:var(--text2);"><div style="width:4px;height:4px;border-radius:50%;background:var(--neon);flex-shrink:0;"></div>Brian <span style="color:var(--text3);">(Dash)</span></div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:var(--text2);"><div style="width:4px;height:4px;border-radius:50%;background:var(--amber);flex-shrink:0;"></div>Carolina <span style="color:var(--text3);">(Docs)</span></div>
       </div>
     </div>
   </aside>
@@ -772,12 +785,58 @@ const waterLayers = WATER_STATIONS.map(s => {
   return marker;
 });
 
+// ── Section master visibility ──
+const sectionVis = { monitoreo: true, zonasDano: true, infraestructura: true };
+let currentLayerMode = 'all';
+
 function setLayer(mode) {
+  currentLayerMode = mode;
   ['btn-all','btn-def','btn-water'].forEach(id => document.getElementById(id).className = 'layer-btn');
   const classMap = { all:'on-all', def:'on-def', water:'on-water' };
   document.getElementById(`btn-${mode}`).classList.add(classMap[mode]);
+  if (!sectionVis.monitoreo) return;
   defLayers.forEach(l   => mode !== 'water' ? map.addLayer(l) : map.removeLayer(l));
   waterLayers.forEach(l => mode !== 'def'   ? map.addLayer(l) : map.removeLayer(l));
+}
+
+function _updateSecToggle(id, on) {
+  const track = document.getElementById(`${id}-track`);
+  const txt   = document.getElementById(`${id}-txt`);
+  if (track) track.classList.toggle('on', on);
+  if (txt)   { txt.textContent = on ? 'ON' : 'OFF'; txt.classList.toggle('on', on); }
+}
+
+function toggleSectionMonitoreo() {
+  sectionVis.monitoreo = !sectionVis.monitoreo;
+  if (sectionVis.monitoreo) {
+    setLayer(currentLayerMode);
+  } else {
+    defLayers.forEach(l   => map.removeLayer(l));
+    waterLayers.forEach(l => map.removeLayer(l));
+  }
+  _updateSecToggle('mon', sectionVis.monitoreo);
+}
+
+function toggleSectionZonasDano() {
+  sectionVis.zonasDano = !sectionVis.zonasDano;
+  ['cascada','dano'].forEach(tipo => {
+    if (!dmg.visible[tipo]) return;
+    const lyr = _activeDmgLayer(tipo);
+    if (!lyr) return;
+    sectionVis.zonasDano ? map.addLayer(lyr) : map.removeLayer(lyr);
+  });
+  _updateSecToggle('zdano', sectionVis.zonasDano);
+}
+
+function toggleSectionInfra() {
+  sectionVis.infraestructura = !sectionVis.infraestructura;
+  ['deposito','punto','rio'].forEach(tipo => {
+    if (!infra.visible[tipo]) return;
+    const lyr = infra.leafletLayers[tipo];
+    if (!lyr) return;
+    sectionVis.infraestructura ? map.addLayer(lyr) : map.removeLayer(lyr);
+  });
+  _updateSecToggle('infra-sec', sectionVis.infraestructura);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1204,8 +1263,8 @@ function _buildDmgLayer(geojson, stops, valueKey) {
     pane: 'damagePane',
     style: f => ({
       fillColor: _colorScale(stops, f.properties[valueKey], vmax),
-      color:       f.properties.anomalia_riesgo ? '#c0392b' : 'rgba(255,255,255,.25)',
-      weight:      f.properties.anomalia_riesgo ? 2.5 : 0.8,
+      color:       'rgba(160,40,25,0.55)',
+      weight:      1,
       fillOpacity: 0.70,
     }),
     onEachFeature(f, lyr) {
@@ -1241,7 +1300,7 @@ function _buildDmgLayer(geojson, stops, valueKey) {
         ).openTooltip(e.latlng);
       });
       lyr.on('mouseout', function() {
-        this.setStyle({ fillOpacity:.70, weight: isAnom ? 2.5 : 0.8 });
+        this.setStyle({ fillOpacity:.70, weight: 1 });
         this.unbindTooltip?.();
       });
     },
