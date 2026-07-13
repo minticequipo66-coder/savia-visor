@@ -1,0 +1,26 @@
+index.html
+  s_96b2e52b1807ad::t_4922a9761fbc9b 1381-1686
+README.md
+  s_96b2e52b1807ad::t_a24dcdc5ba14a5 1-135,166-175,177-214
+  s_96b2e52b1807ad::t_108044cfbc878b 136-165
+  s_96b2e52b1807ad::t_a2deeea1248122 176
+assets/datos-gov-co-sources.md
+  s_96b2e52b1807ad::t_7e4cf3020c091d 2-3,61-223
+  s_96b2e52b1807ad::t_d25f33c7c4f964 1,4-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "9fdff144dbb4e183f9ef7b8f228792d97d8e5585",
+  "prompts": {},
+  "sessions": {
+    "s_96b2e52b1807ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "148706e3-173e-4d76-9afb-36cf47530b9e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "minticequipo66-coder <minticequipo66-coder@users.noreply.github.com>"
+    }
+  }
+}
