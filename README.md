@@ -1,6 +1,8 @@
 <div align="center">
 
-<img src="assets/preview.png" alt="GovCamp 2026 · Monitor Ambiental IA — Caquetá" width="100%"/>
+[![Ver SAVIA VISOR en vivo](https://img.shields.io/badge/🌿%20Ver%20Demo%20en%20Vivo-SAVIA%20VISOR-4ade80?style=for-the-badge&labelColor=020b04&logo=leaflet)](https://minticequipo66-coder.github.io/savia-visor/)
+
+### [🔗 https://minticequipo66-coder.github.io/savia-visor/](https://minticequipo66-coder.github.io/savia-visor/)
 
 # SAVIA VISOR
 
