@@ -1,0 +1,19 @@
+README.md
+  s_cd7328d9288c4c::t_ae54c6b4ca03ce 3-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "c20b22f759a50edc8e67a8b35e592dc7684b0fd9",
+  "prompts": {},
+  "sessions": {
+    "s_cd7328d9288c4c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb766ee0-a987-4dba-97a3-201f82c0d2f5",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "minticequipo66-coder <minticequipo66-coder@users.noreply.github.com>"
+    }
+  }
+}
