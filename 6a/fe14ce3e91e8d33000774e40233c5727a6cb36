@@ -1,0 +1,19 @@
+data/contexto_mapa.md
+  s_5b2cdd9247b3b9::t_24f5734ffb3fe0 1-337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "6afe14ce3e91e8d33000774e40233c5727a6cb36",
+  "prompts": {},
+  "sessions": {
+    "s_5b2cdd9247b3b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0cd8240f-df27-484e-94f6-e348cd48e3fa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "minticequipo66-coder <minticequipo66-coder@users.noreply.github.com>"
+    }
+  }
+}
